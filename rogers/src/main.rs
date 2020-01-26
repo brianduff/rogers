@@ -1,75 +1,64 @@
 extern crate yaml_rust;
-use std::fs;
-use std::io;
-use std::fmt;
-use std::error::Error as StdError;
-use serde::{Serialize, Deserialize};
-
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
-struct Project {
-    metadata: ProjectMetadata,
-    java: Java
-}
-
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
-struct ProjectMetadata {
-    name: String
-}
-
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
-struct Java {
-    source: String,
-    output: String,
-    deps: Vec<String> // This should be a vec of Dep or somesuch
-}
-
-#[derive(Debug)]
-pub enum ProjectError {
-    ParsingFailed(serde_yaml::Error),
-    ReadFailed(io::Error)
-}
-
-impl fmt::Display for ProjectError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match &*self {
-            ProjectError::ParsingFailed(e) => e.fmt(f),
-            ProjectError::ReadFailed(e) => e.fmt(f)
-        }
-    }
-}
-
-impl StdError for ProjectError {
-    fn description(&self) -> &str {
-        match &*self {
-            ProjectError::ParsingFailed(e) => e.description(),
-            ProjectError::ReadFailed(e) => e.description()
-        }
-    }
-}
-
-impl From<io::Error> for ProjectError {
-    fn from(e: io::Error) -> Self {
-        ProjectError::ReadFailed(e)
-    }
-}
-
-impl From<serde_yaml::Error> for ProjectError {
-    fn from(e: serde_yaml::Error) -> Self {
-        ProjectError::ParsingFailed(e)
-    }
-}
+extern crate serde;
+extern crate serde_xml_rs;
+use std::path::PathBuf;
+use serde_xml_rs::{from_str, to_string};
+mod eclipse;
+mod rogers;
 
 fn main() {
     println!("Hello, world!");
-    let project = load_project("/Users/brianduff/Documents/Development/graphs/src/test/rogers.yaml");
+    let mut project_loader = rogers::ProjectLoader::new();
+    let path = PathBuf::from("/Users/brianduff/Documents/Development/graphs/src/test/rogers.yaml");
 
+    let project = project_loader.load_project(&path);
     println!("{:?}", project);
+
+    let another_project = project_loader.get(&path).unwrap();
+    println!("{:?}", another_project);
+
+    // Test out deserializing xml
+    let xml = r##"
+    <projectDescription>
+	<name>graphs_test</name>
+	<comment></comment>
+	<projects>
+	</projects>
+	<buildSpec>
+		<buildCommand>
+			<name>org.eclipse.jdt.core.javabuilder</name>
+			<arguments>
+			</arguments>
+		</buildCommand>
+	</buildSpec>
+	<natures>
+		<nature>org.eclipse.jdt.core.javanature</nature>
+	</natures>
+    </projectDescription>
+    "##;
+
+    let project_desc : eclipse::ProjectDescription = from_str(&xml).unwrap();
+
+    println!("{:?}", project_desc);
+
+    let cpxml = r##"
+    <classpath>
+        <classpathentry kind="src" path="java"/>
+        <classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER">
+            <attributes>
+                <attribute name="module" value="true"/>
+            </attributes>
+        </classpathentry>
+        <classpathentry kind="lib" path="../../third-party/junit/junit-4.13.jar" sourcepath="../../third-party/junit/junit-4.13-sources.jar"/>
+        <classpathentry combineaccessrules="false" kind="src" path="/graphs_main"/>
+        <classpathentry kind="output" path="bin"/>
+    </classpath>"##;
+    let cp : eclipse::Classpath = from_str(&cpxml).unwrap();
+
+    println!("{:?}", cp);
+
+
+    let ep = eclipse::create_eclipse_project(&project_loader);
+    println!("{:?}", ep);
 }
 
-/// Loads a Rogers project from the given file.
-fn load_project(filename: &str) -> Result<Project, ProjectError> {
-    let yaml_text = fs::read_to_string(filename)?;
-    let project = serde_yaml::from_str(&yaml_text)?;
-
-    Ok(project)
-}
