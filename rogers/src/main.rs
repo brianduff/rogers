@@ -1,8 +1,8 @@
-extern crate yaml_rust;
 extern crate serde;
 extern crate serde_xml_rs;
-use std::path::PathBuf;
+extern crate yaml_rust;
 use serde_xml_rs::{from_str, to_string};
+use std::path::PathBuf;
 mod eclipse;
 mod rogers;
 
@@ -37,7 +37,7 @@ fn main() {
     </projectDescription>
     "##;
 
-    let project_desc : eclipse::ProjectDescription = from_str(&xml).unwrap();
+    let project_desc: eclipse::ProjectDescription = from_str(&xml).unwrap();
 
     println!("{:?}", project_desc);
 
@@ -53,12 +53,10 @@ fn main() {
         <classpathentry combineaccessrules="false" kind="src" path="/graphs_main"/>
         <classpathentry kind="output" path="bin"/>
     </classpath>"##;
-    let cp : eclipse::Classpath = from_str(&cpxml).unwrap();
+    let cp: eclipse::Classpath = from_str(&cpxml).unwrap();
 
     println!("{:?}", cp);
-
 
     let ep = eclipse::create_eclipse_project(&project_loader);
     println!("{:?}", ep);
 }
-
